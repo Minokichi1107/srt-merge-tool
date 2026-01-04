@@ -1,3 +1,43 @@
+def parse_srt(path):
+    subs = []
+    with open(path, encoding="utf-8") as f:
+        block = []
+        for line in f:
+            line = line.strip()
+            if line == "":
+                if len(block) >= 3:
+                    time = block[1]
+                    text = " ".join(block[2:])
+                    start = to_seconds(time.split(" --> ")[0])
+                    subs.append((start, time, text))
+                block = []
+            else:
+                block.append(line)
+
+        # 最後のブロック対策
+        if len(block) >= 3:
+            time = block[1]
+            text = " ".join(block[2:])
+            start = to_seconds(time.split(" --> ")[0])
+            subs.append((start, time, text))
+
+    return subs
+
+
+def to_seconds(t):
+    h, m, rest = t.split(":")
+
+    if "," in rest:
+        s, ms = rest.split(",")
+    elif "." in rest:
+        s, ms = rest.split(".")
+    else:
+        s = rest
+        ms = "0"
+
+    return int(h)*3600 + int(m)*60 + int(s) + int(ms)/1000
+
+
 def merge(jpn, eng, threshold=0.5, carry_threshold=0.8):
     result = []
     used = set()
@@ -58,3 +98,28 @@ def merge(jpn, eng, threshold=0.5, carry_threshold=0.8):
     result.sort(key=lambda x: x["start"])
 
     return result
+
+
+
+# ==== ここだけ自分の環境に合わせて変更 ====
+jpn_srt = "japanese.srt"
+eng_srt = "english.srt"
+out_srt = "merged.srt"
+
+jpn = parse_srt(jpn_srt)
+eng = parse_srt(eng_srt)
+
+merged = merge(jpn, eng)
+
+with open(out_srt, "w", encoding="utf-8") as f:
+    for i, block in enumerate(merged, 1):
+        f.write(f"{i}\n")
+        f.write(f"{block['time']}\n")
+        if block["eng"]:
+            f.write(block["eng"] + "\n")
+        if block["jpn"]:
+            f.write(block["jpn"] + "\n")
+        f.write("\n")
+
+
+print("結合完了")
